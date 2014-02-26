@@ -19,7 +19,7 @@
 # will not work !
 BINARY = project
 
-DEVICE = stm32f407vgt6
+DEVICE = stm32l152rct6
 
 # Configure directories. These should end with trailing / !
 OPENCM3_DIR	= lib/libopencm3/
