@@ -25,10 +25,10 @@ static void gpio_setup(void)
 	gpio_set(GPIOB, GPIO6);
 }
 
+int i;
+
 int main(void)
 {
-	int i;
-
 	gpio_setup();
 
 	/* Blink the LED (PC8) on the board. */
