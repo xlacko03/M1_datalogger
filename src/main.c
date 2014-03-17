@@ -17,24 +17,52 @@
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/exti.h>
+#include <libopencm3/cm3/nvic.h>
+
+volatile int button_pressed;
+
+void exti0_isr(void)
+{
+    if(button_pressed)
+    {
+        button_pressed=0;
+    }
+    else
+        button_pressed=1;
+}
+
+static void button_interrupt_setup(void)
+{
+    nvic_enable_irq(NVIC_EXTI0_IRQ);
+    exti_select_source((1<<0),GPIOA);
+    exti_set_trigger(NVIC_EXTI0_IRQ, EXTI_TRIGGER_RISING);
+    exti_enable_request((1<<0));
+}
 
 static void gpio_setup(void)
 {
 	rcc_periph_clock_enable(RCC_GPIOB);
 	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO6 | GPIO7);
+	gpio_mode_setup(GPIOA, GPIO_MODE_INPUT,GPIO_PUPD_NONE,GPIO0);
 	gpio_set(GPIOB, GPIO6);
 }
 
 int main(void)
 {
 	int i;
+    button_pressed = 1;
 
 	gpio_setup();
+	button_interrupt_setup();
 
 	/* Blink the LED (PC8) on the board. */
 	while (1) {
 		/* Using API function gpio_toggle(): */
-		gpio_toggle(GPIOB, GPIO6 | GPIO7);	/* LED on/off */
+        if(button_pressed)
+            __asm__("nop");
+        if(!button_pressed)
+            gpio_toggle(GPIOB, GPIO6 | GPIO7);	/* LED on/off */
 		for (i = 0; i < 100000; i++)	/* Wait a bit. */
 			__asm__("nop");
 	}
