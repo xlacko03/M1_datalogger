@@ -22,30 +22,32 @@
 
 volatile int button_pressed;
 
+static void button_interrupt_setup(void)
+{
+    nvic_enable_irq(NVIC_EXTI0_IRQ);
+    exti_select_source(GPIO0,GPIOA);
+    exti_set_trigger(EXTI0, EXTI_TRIGGER_RISING);
+    exti_enable_request(EXTI0);
+}
+
+static void gpio_setup(void)
+{
+	rcc_periph_clock_enable(RCC_GPIOB);
+	rcc_periph_clock_enable(RCC_GPIOA);
+	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO6 | GPIO7);
+	gpio_mode_setup(GPIOA, GPIO_MODE_INPUT,GPIO_PUPD_NONE,GPIO0);
+	gpio_set(GPIOB, GPIO6);
+}
+
 void exti0_isr(void)
 {
+    exti_reset_request(EXTI0);
     if(button_pressed)
     {
         button_pressed=0;
     }
     else
         button_pressed=1;
-}
-
-static void button_interrupt_setup(void)
-{
-    nvic_enable_irq(NVIC_EXTI0_IRQ);
-    exti_select_source((1<<0),GPIOA);
-    exti_set_trigger(NVIC_EXTI0_IRQ, EXTI_TRIGGER_RISING);
-    exti_enable_request((1<<0));
-}
-
-static void gpio_setup(void)
-{
-	rcc_periph_clock_enable(RCC_GPIOB);
-	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO6 | GPIO7);
-	gpio_mode_setup(GPIOA, GPIO_MODE_INPUT,GPIO_PUPD_NONE,GPIO0);
-	gpio_set(GPIOB, GPIO6);
 }
 
 int main(void)
