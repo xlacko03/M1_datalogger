@@ -38,6 +38,79 @@ static void gpio_setup(void)
 }
 
 
+static int setup_rtc(void)
+{
+    rcc_periph_clock_enable(RCC_PWR);
+    pwr_disable_backup_domain_write_protect();
+
+    RCC_CSR |= RCC_CSR_RTCRST;
+    RCC_CSR &= ~RCC_CSR_RTCRST;
+
+    rcc_osc_on(LSE);
+    rcc_wait_for_osc_ready(LSE);
+
+    rcc_rtc_select_clock(RCC_CSR_RTCSEL_LSE);
+
+    RCC_CSR |= RCC_CSR_RTCEN;
+
+    rtc_unlock();
+
+    RTC_ISR |= RTC_ISR_INIT;
+    while((RTC_ISR & RTC_ISR_INITF)==0);
+
+    uint32_t sync = 255;
+    uint32_t async = 127;
+    rtc_set_prescaler(sync, async);
+
+    //rtc_lock();
+
+    RCC_CSR |= RCC_CSR_RTCEN;
+
+    //pwr_disable_backup_domain_write_protect();
+    //rtc_wait_for_synchro();
+
+    return 0;
+
+}
+
+static int setup_rtc_wakeup(void)
+{
+    rtc_unlock();
+
+    RTC_CR &= ~RTC_CR_WUTE;
+
+    while((RTC_ISR & RTC_ISR_WUTWF) == 0);
+
+    RTC_WUTR = 0;
+
+    //RTC_CR &= ~(RTC_CR_WUCLKSEL_MASK << RTC_CR_WUCLKSEL_SHIFT);
+    //RTC_CR |= (RTC_CR_WUCLKSEL_MASK << RTC_CR_WUCLKSEL_SHIFT);
+
+    RTC_CR &= ~(1<<1);
+    RTC_CR &= ~(1<<2);
+    RTC_CR |= (1<<2);
+    RTC_WUTR |= (1<<3)|(1<<1);
+
+
+    RTC_CR |= RTC_CR_WUTE;
+
+    RTC_CR |= RTC_CR_WUTIE;
+
+    //rtc_lock();
+
+    nvic_enable_irq(NVIC_RTC_WKUP_IRQ);
+    //exti_select_source(GPIO0,GPIOA);
+    exti_set_trigger(EXTI20, EXTI_TRIGGER_RISING);
+    exti_enable_request(EXTI20);
+    return 0;
+}
+
+void rtc_wkup_isr(void)
+{
+    RTC_ISR &= ~(RTC_ISR_WUTF);
+    exti_reset_request(EXTI20);
+}
+
 static void reset_clock(void)
 {
     clock_scale_t cl_config = {
