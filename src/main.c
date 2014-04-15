@@ -23,7 +23,7 @@
 #include <libopencm3/stm32/rtc.h>
 #include <libopencm3/cm3/nvic.h>
 
-volatile int button_pressed;
+
 
 /*static void button_interrupt_setup(void)
 {
@@ -132,18 +132,14 @@ static void reset_clock(void)
 int main(void)
 {
 	int i;
-    button_pressed = 1;
-
-    reset_clock();
+   	reset_clock();
 	gpio_setup();
 	//button_interrupt_setup();
 
 	setup_rtc();
 	setup_rtc_wakeup();
 
-	/* Blink the LED (PC8) on the board. */
 	while (1) {
-		/* Using API function gpio_toggle(): */
         PWR_CR |= PWR_CR_LPSDSR;
         pwr_set_stop_mode();
         __asm volatile("wfi");
