@@ -21,9 +21,12 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/rtc.h>
+#include <libopencm3/stm32/dbgmcu.h>
 #include <libopencm3/cm3/nvic.h>
 
-
+#define WUCKSEL2    (1<<2)
+#define WUCKSEL1    (1<<1)
+#define INTERVAL1   (1<<1)
 
 /*static void button_interrupt_setup(void)
 {
@@ -31,10 +34,11 @@
 
 }*/
 
+
 static void gpio_setup(void)
 {
-	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO6);
-	gpio_clear(GPIOB, GPIO6);
+	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO6|GPIO7);
+	gpio_clear(GPIOB, GPIO6|GPIO7);
 }
 
 
@@ -63,10 +67,9 @@ static int setup_rtc(void)
     rtc_set_prescaler(sync, async);
 
     //rtc_lock();
-
+    pwr_disable_backup_domain_write_protect();
     RCC_CSR |= RCC_CSR_RTCEN;
 
-    //pwr_disable_backup_domain_write_protect();
     //rtc_wait_for_synchro();
 
     return 0;
@@ -86,22 +89,23 @@ static int setup_rtc_wakeup(void)
     //RTC_CR &= ~(RTC_CR_WUCLKSEL_MASK << RTC_CR_WUCLKSEL_SHIFT);
     //RTC_CR |= (RTC_CR_WUCLKSEL_MASK << RTC_CR_WUCLKSEL_SHIFT);
 
-    RTC_CR &= ~(1<<1);
-    RTC_CR &= ~(1<<2);
-    RTC_CR |= (1<<2);
-    RTC_WUTR |= (1<<3)|(1<<1);
+    RTC_CR &= ~WUCKSEL1;
+    //RTC_CR &= ~(1<<2);
+    RTC_CR |= WUCKSEL2;   // nastaveni intervalu sleepu od 1s do 18hod
+    RTC_WUTR |= INTERVAL1;
 
 
     RTC_CR |= RTC_CR_WUTE;
 
     RTC_CR |= RTC_CR_WUTIE;
-
     //rtc_lock();
 
     nvic_enable_irq(NVIC_RTC_WKUP_IRQ);
     //exti_select_source(GPIO0,GPIOA);
     exti_set_trigger(EXTI20, EXTI_TRIGGER_RISING);
     exti_enable_request(EXTI20);
+    // umozneni debugu pri low power rezimu
+    DBGMCU_CR |= DBGMCU_CR_SLEEP;
     return 0;
 }
 
@@ -139,9 +143,14 @@ int main(void)
 	setup_rtc();
 	setup_rtc_wakeup();
 
+    //pockat nez se aktivuje sleep mode - zelena LEDka indikuje dobu cekani
+    gpio_set(GPIOB, GPIO7);
+    for (i = 0; i < 1000000; i++)	/* Wait a bit. */
+			__asm__("nop");
+    gpio_clear(GPIOB,GPIO7);
 	while (1) {
-        PWR_CR |= PWR_CR_LPSDSR;
-        pwr_set_stop_mode();
+        //PWR_CR |= PWR_CR_LPSDSR;
+        //pwr_set_s_mode();
         __asm volatile("wfi");
         gpio_set(GPIOB, GPIO6);	/* LED on/off */
 		for (i = 0; i < 100000; i++)	/* Wait a bit. */
